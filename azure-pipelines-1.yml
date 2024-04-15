@@ -36,3 +36,20 @@ stages:
         command: 'build'
         Dockerfile: 'vote/Dockerfile'
         tags: '$(tag)'
+- stage: Push
+  displayName: Push
+  jobs:
+  - job: Push
+    displayName: Push
+    pool:
+      poolz  # Specify the self-hosted agent pool here
+    steps:
+    - task: Docker@2
+      displayName: Push  an image to container registry
+      inputs:
+        command: push
+        repository: $(imageRepository)
+        dockerfile: vote/dockerfilePath
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
