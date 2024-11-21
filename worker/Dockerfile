@@ -15,7 +15,7 @@ ARG BUILDPLATFORM
 RUN echo "I am running on $BUILDPLATFORM, building for $TARGETPLATFORM"
 
 WORKDIR /source
-COPY *.csproj .
+COPY /worker/*.csproj .
 RUN dotnet restore -a $TARGETARCH
 
 COPY . .
