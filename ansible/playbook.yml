@@ -1,0 +1,57 @@
+##### Vote server #####
+- hosts: vote
+  become: true
+  tasks:
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Pull Docker image for "vote"
+      docker_image:
+        name: ghenac/voting-app
+        source: pull
+        tag: vote
+      when: inventory_hostname == 'vote'
+
+    - name: Run vote service
+      docker_container:
+        name: vote-service
+        image: ghenac/voting-app:vote
+        ports:
+          - "8080:8080"
+        state: started
+      when: inventory_hostname == 'vote'
+
+##### Result Server #####
+    - name: Pull Docker image for "result"
+      docker_image:
+        name: ghenac/voting-app
+        source: pull
+        tag: result
+      when: inventory_hostname == 'result'
+
+    - name: Run result service
+      docker_container:
+        name: result-service
+        image: ghenac/voting-app:result 
+        ports:
+          - "8081:8081"
+        state: started
+      when: inventory_hostname == 'result'
+      
+##### Worker Server #####
+    - name: Pull Docker image for "worker"
+      docker_image:
+        name: dockersamples/examplevotingapp_worker
+        source: pull
+        tag: latest
+      when: inventory_hostname == 'worker'
+
+    - name: Run worker service
+      docker_container:
+        name: worker-service
+        image: dockersamples/examplevotingapp_worker:latest
+        state: started
+      when: inventory_hostname == 'worker'
