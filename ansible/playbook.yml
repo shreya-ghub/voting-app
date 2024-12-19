@@ -2,11 +2,17 @@
 - hosts: vote
   become: true
   tasks:
-    - name: Install Docker
+    - name: Install Docker on all hosts
       apt:
         name: docker.io
         state: present
         update_cache: yes
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
 
     - name: Pull Docker image for "vote"
       docker_image:
@@ -15,7 +21,7 @@
         tag: vote
       when: inventory_hostname == 'vote'
 
-    - name: Run vote service
+    - name: Run "vote" container
       docker_container:
         name: vote-service
         image: ghenac/voting-app:vote
@@ -32,7 +38,7 @@
         tag: result
       when: inventory_hostname == 'result'
 
-    - name: Run result service
+    - name: Run "result" container
       docker_container:
         name: result-service
         image: ghenac/voting-app:result 
@@ -49,7 +55,7 @@
         tag: latest
       when: inventory_hostname == 'worker'
 
-    - name: Run worker service
+    - name: Run "worker" container
       docker_container:
         name: worker-service
         image: dockersamples/examplevotingapp_worker:latest
