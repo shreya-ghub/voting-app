@@ -134,6 +134,14 @@ resource "aws_security_group" "public_security_group" {
   tags = {
     Name = "voting-app_public-sec-gr"
   }
+
+  ingress {
+    description = "PostgreSQL from anywhere"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 # Private #
