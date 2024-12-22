@@ -22,7 +22,7 @@ resource "aws_vpc" "voting-app-vpc" {
 }
 
 ##### EC2 Instances #####
-resource "aws_instance" "vote" {
+resource "aws_instance" "frontend" {
   ami                         = var.ami_image
   instance_type               = var.instance_type
   key_name                    = "voting-app-key"
@@ -31,11 +31,11 @@ resource "aws_instance" "vote" {
   subnet_id                   = aws_subnet.public_subnet.id
   associate_public_ip_address = true
   tags = {
-    Name = "vote"
+    Name = "frontend"
   }
 }
 
-resource "aws_instance" "result" {
+resource "aws_instance" "backend" {
   ami                         = var.ami_image
   instance_type               = var.instance_type
   key_name                    = "voting-app-key"
@@ -44,11 +44,11 @@ resource "aws_instance" "result" {
   subnet_id                   = aws_subnet.public_subnet.id
   associate_public_ip_address = true
   tags = {
-    Name = "result"
+    Name = "backend"
   }
 }
 
-resource "aws_instance" "worker" {
+resource "aws_instance" "db" {
   ami                         = var.ami_image
   instance_type               = var.instance_type
   key_name                    = "voting-app-key"
@@ -57,7 +57,7 @@ resource "aws_instance" "worker" {
   subnet_id                   = aws_subnet.public_subnet.id
   associate_public_ip_address = true
   tags = {
-    Name = "worker"
+    Name = "db"
   }
 }
 
@@ -109,6 +109,22 @@ resource "aws_security_group" "public_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "Http from Internet"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Http from Internet"
+    from_port   = 8081
+    to_port     = 8081
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -123,7 +139,7 @@ resource "aws_security_group" "public_security_group" {
 # Private #
 resource "aws_security_group" "private_security_group" {
   name        = "voting-app_private-sec-gr"
-  description = "Allow traffic on private VM"
+  description = "Allow private traffic "
   vpc_id      = aws_vpc.voting-app-vpc.id
 
   ingress {

@@ -21,39 +21,39 @@ resource "aws_lb" "voting_app_alb" {
 
 ##### Target Groups #####
 
-# Target group for 'vote' service #
-resource "aws_lb_target_group" "vote_target_group" {
-  name        = "vote-tg"
+# Target group for "frontend" service #
+resource "aws_lb_target_group" "frontend_target_group" {
+  name        = "frontend-tg"
   port        = 80
   protocol    = "HTTP"
   vpc_id      = aws_vpc.voting-app-vpc.id
   target_type = "instance"
   tags = {
-    Name = "vote-tg"
+    Name = "frontend-tg"
   }
 }
 
-# Target group for 'result' service #
-resource "aws_lb_target_group" "result_target_group" {
-  name        = "result-tg"
+# Target group for "backend" service #
+resource "aws_lb_target_group" "backend_target_group" {
+  name        = "backend-tg"
   port        = 80
   protocol    = "HTTP"
   vpc_id      = aws_vpc.voting-app-vpc.id
   target_type = "instance"
   tags = {
-    Name = "result-tg"
+    Name = "backend-tg"
   }
 }
 
-# Target group for 'worker' service #
-resource "aws_lb_target_group" "worker_target_group" {
-  name        = "worker-tg"
+# Target group for "DB" service #
+resource "aws_lb_target_group" "db_target_group" {
+  name        = "db-tg"
   port        = 80
   protocol    = "HTTP"
   vpc_id      = aws_vpc.voting-app-vpc.id
   target_type = "instance"
   tags = {
-    Name = "worker-tg"
+    Name = "db-tg"
   }
 }
 
@@ -77,85 +77,85 @@ resource "aws_lb_listener" "voting_app_listener" {
 
 ##### Listener Rules #####
 
-# Rule for 'vote' traffic #
-resource "aws_lb_listener_rule" "vote_rule" {
+# Rule for "frontend" traffic #
+resource "aws_lb_listener_rule" "frontend_rule" {
   listener_arn = aws_lb_listener.voting_app_listener.arn
   priority     = 1
   tags = {
-    Name = "vote"
+    Name = "frontend"
   }
 
   condition {
     host_header {
-      values = ["vote.example.com"]
+      values = ["frontend.example.com"]
     }
   }
 
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.vote_target_group.arn
+    target_group_arn = aws_lb_target_group.frontend_target_group.arn
   }
 }
 
-# Rule for 'result' traffic #
-resource "aws_lb_listener_rule" "result_rule" {
+# Rule for "backend" traffic #
+resource "aws_lb_listener_rule" "backend_rule" {
   listener_arn = aws_lb_listener.voting_app_listener.arn
   priority     = 2
   tags = {
-    Name = "result"
+    Name = "backend"
   }
 
   condition {
     host_header {
-      values = ["result.example.com"]
+      values = ["backend.example.com"]
     }
   }
 
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.result_target_group.arn
+    target_group_arn = aws_lb_target_group.backend_target_group.arn
   }
 }
 
-# Rule for 'worker' traffic #
-resource "aws_lb_listener_rule" "worker_rule" {
+# Rule for "DB" traffic #
+resource "aws_lb_listener_rule" "db_rule" {
   listener_arn = aws_lb_listener.voting_app_listener.arn
   priority     = 3
   tags = {
-    Name = "worker"
+    Name = "db"
   }
 
   condition {
     host_header {
-      values = ["worker.example.com"]
+      values = ["db.example.com"]
     }
   }
 
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.worker_target_group.arn
+    target_group_arn = aws_lb_target_group.db_target_group.arn
   }
 }
 
 ##### Attach Instances to Target Groups #####
 
-# Register 'vote' instance #
-resource "aws_lb_target_group_attachment" "vote_attachment" {
-  target_group_arn = aws_lb_target_group.vote_target_group.arn
-  target_id        = aws_instance.vote.id
+# Register "frontend" instance #
+resource "aws_lb_target_group_attachment" "frontend_attachment" {
+  target_group_arn = aws_lb_target_group.frontend_target_group.arn
+  target_id        = aws_instance.frontend.id
   port             = 80
 }
 
-# Register 'result' instance #
-resource "aws_lb_target_group_attachment" "result_attachment" {
-  target_group_arn = aws_lb_target_group.result_target_group.arn
-  target_id        = aws_instance.result.id
+# Register "backend" instance #
+resource "aws_lb_target_group_attachment" "backend_attachment" {
+  target_group_arn = aws_lb_target_group.backend_target_group.arn
+  target_id        = aws_instance.backend.id
   port             = 80
 }
 
-# Register 'worker' instance #
+# Register "DB" instance #
 resource "aws_lb_target_group_attachment" "worker_attachment" {
-  target_group_arn = aws_lb_target_group.worker_target_group.arn
-  target_id        = aws_instance.worker.id
+  target_group_arn = aws_lb_target_group.db_target_group.arn
+  target_id        = aws_instance.db.id
   port             = 80
 }

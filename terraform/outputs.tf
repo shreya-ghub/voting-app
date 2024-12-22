@@ -1,17 +1,17 @@
 ##### Outputs for EC2 Instances #####
-output "vote_instance_public_ip" {
-  description = "The public IP address of the 'vote' EC2 instance"
-  value       = aws_instance.vote.public_ip
+output "frontend_instance_public_ip" {
+  description = "The public IP address of the 'frontend' EC2 instance"
+  value       = aws_instance.frontend.public_ip
 }
 
-output "result_instance_public_ip" {
-  description = "The public IP address of the 'result' EC2 instance"
-  value       = aws_instance.result.public_ip
+output "backend_instance_public_ip" {
+  description = "The public IP address of the 'backend' EC2 instance"
+  value       = aws_instance.backend.public_ip
 }
 
-output "worker_instance_public_ip" {
-  description = "The public IP address of the 'worker' EC2 instance"
-  value       = aws_instance.worker.public_ip
+output "db_instance_public_ip" {
+  description = "The public IP address of the 'DB' EC2 instance"
+  value       = aws_instance.db.public_ip
 }
 
 ##### Outputs for Subnets #####
