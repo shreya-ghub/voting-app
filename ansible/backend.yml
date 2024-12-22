@@ -58,3 +58,6 @@
       ansible.builtin.docker_container_info:
         name: Redis
       register: container_info
+
+
+# Remember to add configuration to change mode for the user in the EC2 instance for Docker # 
