@@ -3,7 +3,7 @@
   hosts: db
   become: yes
   vars:
-    postgres_password: "YourSecurePassword" # Replace with a secure password or use Ansible Vault
+    postgres_password: "postgres"
     postgres_db: "voting_app_db"
     postgres_user: "voting_user"
     postgres_port: 5432
@@ -17,6 +17,13 @@
         name: docker.io
         state: present
 
+    - name: Add the user to the Docker group
+      ansible.builtin.user:
+        name: "ubuntu"
+        groups: docker
+        append: yes
+        state: present
+
     - name: Ensure Docker service is running and enabled
       ansible.builtin.service:
         name: docker
@@ -27,11 +34,6 @@
       community.docker.docker_image:
         name: postgres:15-alpine
         source: pull
-
-    - name: Create Docker network (optional, for better isolation)
-      community.docker.docker_network:
-        name: voting_app_network
-        state: present
 
     ##### DB service #####
     - name: Run the PostgreSQL container
@@ -65,7 +67,3 @@
     - name: Debug container information
       debug:
         var: container_info
-
-
-
-# Remember to add configuration to change mode for the user in the EC2 instance for Docker # 

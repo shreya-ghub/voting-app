@@ -12,32 +12,25 @@
         name: docker.io
         state: present
 
+    - name: Create backend Docker network if it does not exist
+      ansible.builtin.docker_network:
+        name: backend-network
+        state: present
+
+    - name: Add the user to the Docker group
+      ansible.builtin.user:
+        name: "ubuntu"
+        groups: docker
+        append: yes
+        state: present
+
     - name: Ensure Docker service is running
       ansible.builtin.service:
         name: docker
         state: started
         enabled: true
 
-##### Worker Service #####
-    - name: Pull the vote Docker image
-      ansible.builtin.docker_image:
-        name: dockersamples/examplevotingapp_worker
-        tag: latest
-        source: pull
-
-    - name: Run the worker-app container
-      ansible.builtin.docker_container:
-        name: voting-app-vote
-        image: dockersamples/examplevotingapp_worker:latest
-        state: started
-        restart_policy: always
-
-    - name: Verify the container is running
-      ansible.builtin.docker_container_info:
-        name: worker-app
-      register: container_info
-
-##### Redis Service #####
+    ##### Redis Service #####
     - name: Pull the Redis Docker image
       ansible.builtin.docker_image:
         name: redis:alpine
@@ -48,16 +41,42 @@
         name: Redis
         image: redis:alpine
         state: started
+        networks:
+          - name: backend-network
         restart_policy: always
         exposed_ports:
           - "6379"
         published_ports:
           - "6379:6379"
 
-    - name: Verify the container is running
+    - name: Verify the Redis container is running
       ansible.builtin.docker_container_info:
         name: Redis
-      register: container_info
+      register: redis_container_info
 
 
-# Remember to add configuration to change mode for the user in the EC2 instance for Docker # 
+    ##### Worker Service #####
+    - name: Pull the worker Docker image
+      ansible.builtin.docker_image:
+        name: dockersamples/examplevotingapp_worker
+        tag: latest
+        source: pull
+
+    - name: Run the worker-app container
+      ansible.builtin.docker_container:
+        name: voting-app-worker
+        image: dockersamples/examplevotingapp_worker:latest
+        state: started
+        networks:
+          - name: backend-network
+        restart_policy: always
+        env:
+          REDIS_HOST: "Redis"  # This is how the worker will connect to Redis container by using the container name as hostname
+          REDIS_PORT: "6379"
+        volumes:
+          - /tmp:/tmp
+
+    - name: Verify the worker container is running
+      ansible.builtin.docker_container_info:
+        name: voting-app-worker
+      register: worker_container_info

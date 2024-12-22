@@ -12,6 +12,13 @@
         name: docker.io
         state: present
 
+    - name: Add the user to the Docker group
+      ansible.builtin.user:
+        name: "ubuntu"
+        groups: docker
+        append: yes
+        state: present
+
     - name: Ensure Docker service is running
       ansible.builtin.service:
         name: docker
@@ -83,6 +90,4 @@
       ansible.builtin.docker_container_info:
         name: voting-app-result
       register: container_info
-
-
-# Remember to add configuration to change mode for the user in the EC2 instance for Docker # 
+      
