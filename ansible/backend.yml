@@ -1,0 +1,60 @@
+---
+- name: Ensure Docker is installed and running on the backend instance
+  hosts: backend
+  become: yes
+  tasks:
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker if not installed
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+
+    - name: Ensure Docker service is running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+##### Worker Service #####
+    - name: Pull the vote Docker image
+      ansible.builtin.docker_image:
+        name: dockersamples/examplevotingapp_worker
+        tag: latest
+        source: pull
+
+    - name: Run the worker-app container
+      ansible.builtin.docker_container:
+        name: voting-app-vote
+        image: dockersamples/examplevotingapp_worker:latest
+        state: started
+        restart_policy: always
+
+    - name: Verify the container is running
+      ansible.builtin.docker_container_info:
+        name: worker-app
+      register: container_info
+
+##### Redis Service #####
+    - name: Pull the Redis Docker image
+      ansible.builtin.docker_image:
+        name: redis:alpine
+        source: pull
+
+    - name: Run the Redis container
+      ansible.builtin.docker_container:
+        name: Redis
+        image: redis:alpine
+        state: started
+        restart_policy: always
+        exposed_ports:
+          - "6379"
+        published_ports:
+          - "6379:6379"
+
+    - name: Verify the container is running
+      ansible.builtin.docker_container_info:
+        name: Redis
+      register: container_info

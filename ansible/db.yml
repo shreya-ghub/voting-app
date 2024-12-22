@@ -1,0 +1,41 @@
+---
+- name: Ensure Docker is installed and running on the DB instance
+  hosts: db
+  become: yes
+  tasks:
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker if not installed
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+
+    - name: Ensure Docker service is running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+##### DB service #####
+    - name: Pull the DB Docker image
+      ansible.builtin.docker_image:
+        name: postgres:15-alpine
+        source: pull
+
+    - name: Run the DB container
+      ansible.builtin.docker_container:
+        name: voting-app-db
+        image: postgres:15-alpine
+        state: started
+        restart_policy: always
+        exposed_ports:
+          - "5432"
+        published_ports:
+          - "5432:5432"
+
+    - name: Verify the container is running
+      ansible.builtin.docker_container_info:
+        name: voting-app-db
+      register: container_info

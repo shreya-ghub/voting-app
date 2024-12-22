@@ -29,6 +29,8 @@
           - "8080:8080"
         state: started
       when: inventory_hostname == 'vote'
+      env:
+      REDIS_HOST: "redis.internal"
 
 ##### Result Server #####
     - name: Pull Docker image for "result"
