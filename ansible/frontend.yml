@@ -26,6 +26,7 @@
         enabled: true
 
 ##### Vote Service #####
+
     - name: Pull the vote Docker image
       ansible.builtin.docker_image:
         name: ghenac/voting-app
@@ -38,6 +39,9 @@
         image: ghenac/voting-app:vote
         state: started
         restart_policy: always
+        env:
+          REDIS_HOST: "44.223.35.102"  # This is how the worker will connect to Redis container by using the container name as hostname
+          REDIS_PORT: "6379"
         exposed_ports:
           - "80"
         published_ports:

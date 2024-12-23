@@ -1,49 +1,39 @@
-# # Stage 1: Build
-# FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
-# WORKDIR /source
-
-# # Copy the project file and restore dependencies
-# COPY *.csproj ./
-# RUN dotnet restore
-
-# # Copy the remaining source code and publish
-# COPY . ./
-# RUN dotnet publish -c Release -o /app --runtime linux-arm64 --self-contained false --no-restore
-
-# # Stage 2: Runtime
-# FROM mcr.microsoft.com/dotnet/runtime:7.0
-# WORKDIR /app
-# COPY --from=build /app .
-# ENTRYPOINT ["dotnet", "Worker.dll"]
-
-
-
-##### Dockerfile V2 #####
-
-# Stage 1: Build
+# Stage 1: Build the application
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
-WORKDIR /app
 
-# Copy and restore project files
-COPY ./*.csproj ./
+# Set the working directory inside the container
+WORKDIR /src
+
+# Copy the project file and restore dependencies
+# Adjust 'Worker.csproj' if your project file has a different name
+COPY Worker.csproj ./
 RUN dotnet restore
 
-# Copy all source files and build
+# Copy the entire source code into the container
 COPY . ./
-RUN dotnet publish -c Release -o /app/out
 
-# Stage 2: Runtime
-FROM mcr.microsoft.com/dotnet/runtime:7.0
+# Publish the application in Release mode to the /app/publish directory
+RUN dotnet publish -c Release -o /app/publish
+
+# Stage 2: Create the runtime image
+FROM mcr.microsoft.com/dotnet/runtime:7.0 AS runtime
+
+# Set the working directory inside the runtime container
 WORKDIR /app
 
-# Copy the build output
-COPY --from=build /app/out ./
+# Copy the published output from the build stage
+COPY --from=build /app/publish .
 
-# Expose port if necessary (e.g., for health checks or specific APIs)
-EXPOSE 80
+# (Optional) Set environment variables with default values
+# These can be overridden at runtime using Docker's `-e` flag or Docker Compose
+ENV DB_HOST=db
+ENV DB_USERNAME=postgres
+ENV DB_PASSWORD=postgres
+ENV DB_NAME=postgres
+ENV REDIS_HOST=redis
 
-# Environment variables for runtime (customize as needed)
-ENV DOTNET_EnableDiagnostics=0
+# (Optional) Expose ports if your application listens on any (not required for background workers)
+# EXPOSE 80
 
-# Command to run the application
-CMD ["dotnet", "Worker.dll"]
+# Define the entry point for the container to run the application
+ENTRYPOINT ["dotnet", "Worker.dll"]
