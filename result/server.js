@@ -27,6 +27,8 @@ var pgDatabase = process.env.PG_DATABASE || 'postgres';
 
 var connectionString = `postgresql://${pgUser}:${pgPassword}@${pgHost}:${pgPort}/${pgDatabase}`;
 
+console.log(connectionString)
+
 var pool = new Pool({
   connectionString: connectionString
 });

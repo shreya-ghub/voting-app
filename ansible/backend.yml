@@ -58,14 +58,14 @@
     ##### Worker Service #####
     - name: Pull the worker Docker image
       ansible.builtin.docker_image:
-        name: dockersamples/examplevotingapp_worker
+        name: ghenac/voting-app-worker
         tag: latest
         source: pull
 
     - name: Run the worker-app container
       ansible.builtin.docker_container:
         name: voting-app-worker
-        image: dockersamples/examplevotingapp_worker:latest
+        image: ghenac/voting-app-worker:latest
         state: started
         networks:
           - name: backend-network
@@ -73,6 +73,11 @@
         env:
           REDIS_HOST: "Redis"  # This is how the worker will connect to Redis container by using the container name as hostname
           REDIS_PORT: "6379"
+          DB_HOST: "3.91.95.245"
+          DB_USERNAME: "postgres"
+          DB_PASSWORD: "postgres"
+          DB_NAME: "voting-app-db"
+      
         volumes:
           - /tmp:/tmp
 
