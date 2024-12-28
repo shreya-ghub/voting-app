@@ -39,10 +39,10 @@ resource "aws_instance" "backend" {
   ami                         = var.ami_image
   instance_type               = var.instance_type
   key_name                    = "voting-app-key"
-  availability_zone           = "us-east-1a"
-  vpc_security_group_ids      = [aws_security_group.public_security_group.id]
-  subnet_id                   = aws_subnet.public_subnet.id
-  associate_public_ip_address = true
+  availability_zone           = "us-east-1b"
+  vpc_security_group_ids      = [aws_security_group.private_security_group.id]
+  subnet_id                   = aws_subnet.private_subnet.id
+  associate_public_ip_address = false
   tags = {
     Name = "backend"
   }
@@ -52,10 +52,10 @@ resource "aws_instance" "db" {
   ami                         = var.ami_image
   instance_type               = var.instance_type
   key_name                    = "voting-app-key"
-  availability_zone           = "us-east-1a"
-  vpc_security_group_ids      = [aws_security_group.public_security_group.id]
-  subnet_id                   = aws_subnet.public_subnet.id
-  associate_public_ip_address = true
+  availability_zone           = "us-east-1b"
+  vpc_security_group_ids      = [aws_security_group.private_security_group.id]
+  subnet_id                   = aws_subnet.private_subnet.id
+  associate_public_ip_address = false
   tags = {
     Name = "db"
   }
@@ -150,12 +150,14 @@ resource "aws_security_group" "private_security_group" {
   description = "Allow private traffic "
   vpc_id      = aws_vpc.voting-app-vpc.id
 
+  # Allow SSH from the frontend EC2 instance to backend and db instances
   ingress {
-    description = "TLS from Internet"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [aws_subnet.public_subnet.cidr_block]
+    description     = "SSH from Frontend EC2"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    cidr_blocks     = []                                            # Keep empty if using specific security group as source
+    security_groups = [aws_security_group.public_security_group.id] # Restrict based on the public security group of frontend
   }
 
   egress {
