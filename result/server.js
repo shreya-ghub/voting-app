@@ -2,6 +2,7 @@ var express = require('express'),
     async = require('async'),
     { Pool } = require('pg'),
     cookieParser = require('cookie-parser'),
+    path = require('path'),
     app = express(),
     server = require('http').Server(app),
     io = require('socket.io')(server);
@@ -17,8 +18,19 @@ io.on('connection', function (socket) {
   });
 });
 
+// Build PostgreSQL connection string dynamically from environment variables
+var pgHost = process.env.PG_HOST || 'localhost';
+var pgPort = process.env.PG_PORT || 5432;
+var pgUser = process.env.PG_USER || 'postgres';
+var pgPassword = process.env.PG_PASSWORD || 'postgres';
+var pgDatabase = process.env.PG_DATABASE || 'postgres';
+
+var connectionString = `postgresql://${pgUser}:${pgPassword}@${pgHost}:${pgPort}/${pgDatabase}`;
+
+console.log(connectionString)
+
 var pool = new Pool({
-  connectionString: 'postgres://postgres:postgres@db/postgres'
+  connectionString: connectionString
 });
 
 async.retry(
@@ -64,7 +76,7 @@ function collectVotesFromResult(result) {
 }
 
 app.use(cookieParser());
-app.use(express.urlencoded());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/views'));
 
 app.get('/', function (req, res) {

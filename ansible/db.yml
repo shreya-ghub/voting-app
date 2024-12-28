@@ -1,0 +1,69 @@
+---
+- name: Ensure Docker is installed and running on the DB instance
+  hosts: db
+  become: yes
+  vars:
+    postgres_password: "postgres"
+    postgres_db: "voting_app_db"
+    postgres_user: "voting_user"
+    postgres_port: 5432
+  tasks:
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker if not installed
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+
+    - name: Add the user to the Docker group
+      ansible.builtin.user:
+        name: "ubuntu"
+        groups: docker
+        append: yes
+        state: present
+
+    - name: Ensure Docker service is running and enabled
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Pull the PostgreSQL Docker image
+      community.docker.docker_image:
+        name: postgres:15-alpine
+        source: pull
+
+    ##### DB service #####
+    - name: Run the PostgreSQL container
+      community.docker.docker_container:
+        name: voting-app-db
+        image: postgres:15-alpine
+        state: started
+        restart_policy: always
+        env:
+          POSTGRES_PASSWORD: "postgres"
+          POSTGRES_DB: "voting-app-db"
+          POSTGRES_USER: "postgres"
+        exposed_ports:
+          - "5432"
+        published_ports:
+          - "5432:5432"
+        networks:
+          - name: voting_app_network
+        volumes:
+          - name: pgdata
+            source: pgdata
+            target: /var/lib/postgresql/data
+            type: volume
+            state: present
+
+    - name: Verify the PostgreSQL container is running
+      community.docker.docker_container_info:
+        name: voting-app-db
+      register: container_info
+
+    - name: Debug container information
+      debug:
+        var: container_info

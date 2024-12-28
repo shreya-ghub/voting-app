@@ -3,7 +3,7 @@
 
 services:
   vote:
-    image: dockersamples/examplevotingapp_vote
+    image: ghenac/voting-app:vote
     depends_on:
       redis:
         condition: service_healthy 
@@ -14,7 +14,7 @@ services:
       - back-tier
 
   result:
-    image: dockersamples/examplevotingapp_result
+    image: ghenac/voting-app:result
     depends_on:
       db:
         condition: service_healthy 

@@ -1,0 +1,104 @@
+---
+- name: Ensure Docker is installed and running on the frontend instance
+  hosts: frontend
+  become: yes
+  tasks:
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker if not installed
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+
+    - name: Add the user to the Docker group
+      ansible.builtin.user:
+        name: "ubuntu"
+        groups: docker
+        append: yes
+        state: present
+
+    - name: Ensure Docker service is running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+##### Vote Service #####
+
+    - name: Pull the vote Docker image
+      ansible.builtin.docker_image:
+        name: ghenac/voting-app-vote
+        tag: latest
+        source: pull
+
+    - name: Run the 'vote' container
+      ansible.builtin.docker_container:
+        name: voting-app-vote
+        image: ghenac/voting-app-vote:latest
+        state: started
+        restart_policy: always
+        env:
+          REDIS_HOST: "44.223.35.102"  # This is how the worker will connect to Redis container by using the container name as hostname
+          REDIS_PORT: "6379"
+        exposed_ports:
+          - "80"
+        published_ports:
+          - "8080:80"
+
+    - name: Verify the container is running
+      ansible.builtin.docker_container_info:
+        name: voting-app-vote
+      register: container_info
+
+    
+##### Result Service #####
+- name: Ensure Docker is installed and running on the vote instance
+  hosts: frontend
+  become: yes
+  tasks:
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker if not installed
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+
+    - name: Ensure Docker service is running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Pull the result Docker image
+      ansible.builtin.docker_image:
+        name: ghenac/voting-app-result
+        tag: latest
+        source: pull
+
+    - name: Run the 'result' container
+      ansible.builtin.docker_container:
+        name: voting-app-result
+        image: ghenac/voting-app-result:latest
+        state: started
+        restart_policy: always
+        exposed_ports:
+          - "80"
+        published_ports:
+          - "8081:80"
+        env:
+          PG_HOST: "3.91.95.245"
+          PG_PORT: "5432"
+          PG_USER: "postgres"
+          PG_PASSWORD: "postgres"
+          PG_DATABASE: "voting-app-db"
+          
+
+    - name: Verify the container is running
+      ansible.builtin.docker_container_info:
+        name: voting-app-result
+      register: container_info
+      
