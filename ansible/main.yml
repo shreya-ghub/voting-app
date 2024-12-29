@@ -1,4 +1,61 @@
 ---
-- import_playbook: db.yml
-- import_playbook: backend.yml
-- import_playbook: frontend.yml
+- name: Prepare frontend as a bastion to deploy backend and db configurations
+  hosts: frontend
+  become: yes
+  tasks:
+    - name: Add Ansible PPA repository
+      apt_repository:
+        repo: "ppa:ansible/ansible"
+        state: present
+
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+
+    # Install Ansible on the frontend instance
+    - name: Install Ansible
+      apt:
+        name: ansible
+        state: present
+
+    # Transfer private key for SSH access
+    - name: Copy private key to the frontend instance
+      copy:
+        src: ../voting-app-key.pem  # Path to the key pair from your local machine
+        dest: /home/ubuntu/voting-app-key.pem
+        owner: ubuntu
+        group: ubuntu
+        mode: '0600'
+
+    # This ensures that the destination directory is empty/clean (otherwise it will give an error)
+    - name: Ensure destination directory is clean
+      file:
+        path: /home/ubuntu/ansible-config
+        state: absent
+
+    # Copy Ansible playbooks and configurations
+    - name: Transfer playbooks and inventory to frontend instance
+      copy:
+        src: /Users/ghenadie/Desktop/voting_app_solution/example-voting-app/ansible/ # Path to the Ansible configurations on your local machine (yes, you need the full path here)
+        dest: /home/ubuntu/ansible-config/
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    # Run Ansible playbooks for db
+    - name: Run db configuration from the frontend
+      shell: |
+        cd /home/ubuntu/ansible-config &&
+        ansible-playbook -i /home/ubuntu/ansible-config/inventory.ini db.yml
+
+    # Run Ansible playbooks for backend
+    - name: Run backend configuration from the frontend
+      shell: |
+        cd /home/ubuntu/ansible-config &&
+        ansible-playbook -i /home/ubuntu/ansible-config/inventory.ini backend.yml
+
+    # Run frontend configurations on the frontend instance
+    - name: Run frontend configuration playbook on itself
+      shell: |
+        cd /home/ubuntu/ansible-config &&
+        ansible-playbook -i /home/ubuntu/ansible-config/inventory.ini frontend.yml
