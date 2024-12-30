@@ -1,6 +1,6 @@
 ---
 - name: Ensure Docker is installed and running on the frontend instance
-  hosts: frontend
+  hosts: localhost
   become: yes
   tasks:
     - name: Update apt package index
@@ -40,7 +40,7 @@
         state: started
         restart_policy: always
         env:
-          REDIS_HOST: "44.223.35.102"  # This is how the worker will connect to Redis container by using the container name as hostname
+          REDIS_HOST: "10.0.2.150"  # This is how the worker will connect to Redis container by using the container name as hostname
           REDIS_PORT: "6379"
         exposed_ports:
           - "80"
@@ -55,7 +55,7 @@
     
 ##### Result Service #####
 - name: Ensure Docker is installed and running on the vote instance
-  hosts: frontend
+  hosts: localhost
   become: yes
   tasks:
     - name: Update apt package index
@@ -90,7 +90,7 @@
         published_ports:
           - "8081:80"
         env:
-          PG_HOST: "3.91.95.245"
+          PG_HOST: "10.0.2.174"
           PG_PORT: "5432"
           PG_USER: "postgres"
           PG_PASSWORD: "postgres"

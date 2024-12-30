@@ -1,4 +1,5 @@
 ---
+#####--------------------------------------------------- Play 1: Prepare frontend as a bastion ---------------------------------------------------#####
 - name: Prepare frontend as a bastion to deploy backend and db configurations
   hosts: frontend
   become: yes
@@ -34,7 +35,7 @@
         state: absent
 
     # Copy Ansible playbooks and configurations
-    - name: Transfer playbooks and inventory to frontend instance
+    - name: Transfer Ansible playbooks to frontend instance
       copy:
         src: /Users/ghenadie/Desktop/voting_app_solution/example-voting-app/ansible/ # Path to the Ansible configurations on your local machine (yes, you need the full path here)
         dest: /home/ubuntu/ansible-config/
@@ -42,20 +43,86 @@
         group: ubuntu
         mode: '0755'
 
-    # Run Ansible playbooks for db
-    - name: Run db configuration from the frontend
-      shell: |
-        cd /home/ubuntu/ansible-config &&
-        ansible-playbook -i /home/ubuntu/ansible-config/inventory.ini db.yml
+#####--------------------------------------------------- Play 2: Test SSH connection from "bastion" to "db" and "backend" ---------------------------------------------------#####
+# Test the SSH to "DB"
+# - name: Test SSH connection through bastion to db instance
+#   hosts: frontend
+#   tasks:
+    - name: Ping db from the frontend instance
+      shell: ssh -i "voting-app-key.pem" -o ProxyCommand="ssh -i 'voting-app-key.pem' -W %h:%p ubuntu@54.167.3.82" ubuntu@10.0.2.174 echo "Connection successful"
+      register: test_ssh
+      changed_when: false
 
-    # Run Ansible playbooks for backend
-    - name: Run backend configuration from the frontend
-      shell: |
-        cd /home/ubuntu/ansible-config &&
-        ansible-playbook -i /home/ubuntu/ansible-config/inventory.ini backend.yml
+    - name: Output SSH test results
+      debug:
+        var: test_ssh.stdout
 
-    # Run frontend configurations on the frontend instance
-    - name: Run frontend configuration playbook on itself
+# Test the SSH to "backend"
+# - name: Test SSH connection through bastion to backend instance
+#   hosts: frontend
+#   tasks:
+    - name: Ping backend from the frontend instance
+      shell: ssh -i "voting-app-key.pem" -o ProxyCommand="ssh -i 'voting-app-key.pem' -W %h:%p ubuntu@54.167.3.82" ubuntu@10.0.2.150 echo "Connection successful"
+      register: test_ssh
+      changed_when: false
+
+    - name: Output SSH test results
+      debug:
+        var: test_ssh.stdout
+
+#####--------------------------------------------------- Play 3: Copy PEM key to "db" and "backend" instances ---------------------------------------------------#####
+# - name: Copy PEM key to db EC2 instance
+#   hosts: frontend
+#   tasks:
+#     - name: Copy PEM key to db instance
+#       ansible.builtin.copy:
+#         src: /home/ubuntu/voting-app-key.pem
+#         dest: /home/ubuntu/.ssh/voting-app-key.pem
+#         mode: '0400'  # Ensure secure permissions
+#         owner: ubuntu
+#         group: ubuntu
+
+# - name: Copy PEM key to backend EC2 instance
+#   hosts: frontend
+#   tasks:
+#     - name: Copy PEM key to backend instance
+#       ansible.builtin.copy:
+#         src: /home/ubuntu/voting-app-key.pem
+#         dest: /home/ubuntu/.ssh/voting-app-key.pem
+#         mode: '0400'  # Ensure secure permissions
+#         owner: ubuntu
+#         group: ubuntu
+
+
+
+#####--------------------------------------------------- Play 4: Run "db" and "backend" configuration playbooks ---------------------------------------------------#####
+# DB
+# - name: Run db configurations on db EC2
+#   hosts: db # change to DB (delete hosts in db.yml)
+#   become: yes
+#   tasks:
+    - name: Run db configuration
       shell: |
         cd /home/ubuntu/ansible-config &&
-        ansible-playbook -i /home/ubuntu/ansible-config/inventory.ini frontend.yml
+        ansible-playbook -i inventory.ini db.yml
+# backend
+# - name: Run backend configuration on backend EC2
+#   hosts: backend # change to backend (delete hosts in backend.yml)
+#   become: yes
+#   tasks:
+    - name: Run backend configuration
+      shell: |
+        cd /home/ubuntu/ansible-config &&
+        ansible-playbook -i inventory.ini backend.yml
+
+#####--------------------------------------------------- Play 5: Run "frontend" configuration playbooks ---------------------------------------------------#####
+# Run frontend configurations on the frontend instance
+# - name: Run frontend configuration on frontend EC2
+#   hosts: frontend
+#   become: yes
+#   tasks:
+    - name: Run frontend playbook
+      shell: |
+        cd /home/ubuntu/ansible-config &&
+        ansible-playbook -i inventory.ini frontend.yml
+    

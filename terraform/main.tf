@@ -131,16 +131,25 @@ resource "aws_security_group" "public_security_group" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  tags = {
-    Name = "voting-app_public-sec-gr"
-  }
-
+  
   ingress {
     description = "PostgreSQL from anywhere"
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = []
+    security_groups = [aws_security_group.private_security_group.id]
+  }
+
+  tags = {
+    Name = "voting-app_public-sec-gr"
   }
 }
 
@@ -152,13 +161,21 @@ resource "aws_security_group" "private_security_group" {
 
   # Allow SSH from the frontend EC2 instance to backend and db instances
   ingress {
-    description     = "SSH from Frontend EC2"
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    cidr_blocks     = []                                            # Keep empty if using specific security group as source
-    security_groups = [aws_security_group.public_security_group.id] # Restrict based on the public security group of frontend
-  }
+  description     = "Allow SSH from Frontend EC2"
+  from_port       = 22
+  to_port         = 22
+  protocol        = "tcp"
+  cidr_blocks     = []
+  security_groups = [aws_security_group.public_security_group.id]
+}
+
+  ingress {
+  description     = "Allow communication with backend and DB instances"
+  from_port       = 0
+  to_port         = 65535
+  protocol        = "tcp"
+  security_groups = [aws_security_group.public_security_group.id]
+}
 
   egress {
     from_port   = 0
