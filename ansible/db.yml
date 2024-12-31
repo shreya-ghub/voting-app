@@ -1,5 +1,7 @@
 ---
-- name: Ensure Docker is installed and running on the DB instance
+#####--------------------------------------------------- Play 1: Docker Installation ---------------------------------------------------#####
+
+- name: Ensure Docker is installed and running on the 'DB' instance
   hosts: db
   become: yes
   vars:
@@ -12,9 +14,42 @@
       ansible.builtin.apt:
         update_cache: yes
 
-    - name: Install Docker if not installed
+    - name: Remove conflicting containerd packages (if any)
       ansible.builtin.apt:
-        name: docker.io
+        name: containerd
+        state: absent
+
+    - name: Install Docker dependencies
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Add Docker's GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /usr/share/keyrings/docker-archive-keyring.gpg
+      notify: Update apt-key
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+
+    - name: Update apt package index (after adding Docker repository)
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker CE
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
         state: present
 
     - name: Add the user to the Docker group
@@ -30,13 +65,26 @@
         state: started
         enabled: true
 
-    - name: Pull the PostgreSQL Docker image
+    - name: Ensure Docker network "voting_app_network" exists
+      ansible.builtin.command:
+        cmd: docker network create voting_app_network
+      register: docker_network_creation
+      failed_when: docker_network_creation.stderr != ""
+      ignore_errors: true
+
+#####--------------------------------------------------- Play 2: Running "DB" Container ---------------------------------------------------#####
+
+- name: Running "DB" Container
+  hosts: db
+  become: yes
+  tasks:
+    ##### DB service #####
+    - name: Pull the 'PostgreSQL' Docker image
       community.docker.docker_image:
         name: postgres:15-alpine
         source: pull
 
-    ##### DB service #####
-    - name: Run the PostgreSQL container
+    - name: Run the 'PostgreSQL' container
       community.docker.docker_container:
         name: voting-app-db
         image: postgres:15-alpine

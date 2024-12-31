@@ -1,16 +1,40 @@
 ---
-- name: Ensure Docker is installed and running on the frontend instance
+#####--------------------------------------------------- Play 1: Docker Installation ---------------------------------------------------#####
+
+- name: Ensure Docker is installed and running on the 'frontend' instance
   hosts: localhost
   become: yes
+  vars:
+    postgres_password: "postgres"
+    postgres_db: "voting_app_db"
+    postgres_user: "voting_user"
+    postgres_port: 5432
   tasks:
     - name: Update apt package index
       ansible.builtin.apt:
         update_cache: yes
 
-    - name: Install Docker if not installed
-      ansible.builtin.apt:
+    # - name: Remove conflicting containerd packages (if any)
+    #   ansible.builtin.apt:
+    #     name: containerd
+    #     state: absent
+
+    - name: Check if Docker is installed
+      command: docker --version
+      register: docker_installed
+      ignore_errors: true
+
+    - name: Install Docker if not present
+      package:
         name: docker.io
         state: present
+      when: docker_installed.rc != 0
+
+    - name: Ensure Docker is installed
+      command: docker --version
+      register: docker_check
+      failed_when: docker_check.rc != 0
+      changed_when: false
 
     - name: Add the user to the Docker group
       ansible.builtin.user:
@@ -19,15 +43,27 @@
         append: yes
         state: present
 
-    - name: Ensure Docker service is running
+    - name: Ensure Docker service is running and enabled
       ansible.builtin.service:
         name: docker
         state: started
-        enabled: true
+        enabled: yes
 
-##### Vote Service #####
+    - name: Ensure Docker network "frontend-network" exists
+      ansible.builtin.command:
+        cmd: docker network create frontend-network
+      register: docker_network_creation
+      failed_when: docker_network_creation.stderr != ""
+      ignore_errors: true
 
-    - name: Pull the vote Docker image
+#####--------------------------------------------------- Play 2: Running "vote" and "result" containers ---------------------------------------------------#####
+
+- name: Running "vote" and "result" containers
+  hosts: localhost
+  become: yes
+  tasks:
+    ##### Vote Service #####
+    - name: Pull the 'vote' Docker image
       ansible.builtin.docker_image:
         name: ghenac/voting-app-vote
         tag: latest
@@ -52,28 +88,8 @@
         name: voting-app-vote
       register: container_info
 
-    
-##### Result Service #####
-- name: Ensure Docker is installed and running on the vote instance
-  hosts: localhost
-  become: yes
-  tasks:
-    - name: Update apt package index
-      ansible.builtin.apt:
-        update_cache: yes
-
-    - name: Install Docker if not installed
-      ansible.builtin.apt:
-        name: docker.io
-        state: present
-
-    - name: Ensure Docker service is running
-      ansible.builtin.service:
-        name: docker
-        state: started
-        enabled: true
-
-    - name: Pull the result Docker image
+    ##### Result Service #####
+    - name: Pull the 'result' Docker image
       ansible.builtin.docker_image:
         name: ghenac/voting-app-result
         tag: latest
@@ -96,7 +112,6 @@
           PG_PASSWORD: "postgres"
           PG_DATABASE: "voting-app-db"
           
-
     - name: Verify the container is running
       ansible.builtin.docker_container_info:
         name: voting-app-result

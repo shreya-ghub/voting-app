@@ -1,20 +1,55 @@
 ---
-- name: Ensure Docker is installed and running on the backend instance
+#####--------------------------------------------------- Play 1: Docker Installation ---------------------------------------------------#####
+
+- name: Ensure Docker is installed and running on the 'backend' instance
   hosts: backend
   become: yes
+  vars:
+    postgres_password: "postgres"
+    postgres_db: "voting_app_db"
+    postgres_user: "voting_user"
+    postgres_port: 5432
   tasks:
     - name: Update apt package index
       ansible.builtin.apt:
         update_cache: yes
 
-    - name: Install Docker if not installed
+    - name: Remove conflicting containerd packages (if any)
       ansible.builtin.apt:
-        name: docker.io
+        name: containerd
+        state: absent
+
+    - name: Install Docker dependencies
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
         state: present
 
-    - name: Create backend Docker network if it does not exist
-      ansible.builtin.docker_network:
-        name: backend-network
+    - name: Add Docker's GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /usr/share/keyrings/docker-archive-keyring.gpg
+      notify: Update apt-key
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+
+    - name: Update apt package index (after adding Docker repository)
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker CE
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
         state: present
 
     - name: Add the user to the Docker group
@@ -24,19 +59,78 @@
         append: yes
         state: present
 
-    - name: Ensure Docker service is running
+    - name: Ensure Docker service is running and enabled
       ansible.builtin.service:
         name: docker
         state: started
         enabled: true
 
+    # - name: Ensure Docker network "backend-network" exists
+    #   ansible.builtin.command:
+    #     cmd: docker network create backend-network
+    #   register: docker_network_creation
+    #   failed_when: docker_network_creation.stderr != ""
+    #   ignore_errors: true
+
+    - name: Ensure Docker network "backend-network" exists
+      docker_network:
+        name: backend-network
+        state: present
+      ignore_errors: true
+
+#####--------------------------------------------------- Play 2: Running "Redis" and "Worker" Containers ---------------------------------------------------#####
+
+- name: Running "Redis" and "Worker" Containers
+  hosts: backend
+  become: yes
+  tasks:
     ##### Redis Service #####
-    - name: Pull the Redis Docker image
+    - name: Pull the 'Redis' Docker image
       ansible.builtin.docker_image:
         name: redis:alpine
         source: pull
+        
+    - name: Check if port 6379 is in use
+      shell: |
+        lsof -i :6379 | grep -v COMMAND | awk '{print $2}' || echo ""
+      register: port_check
+      changed_when: port_check.stdout != ""
+      ignore_errors: true
 
-    - name: Run the Redis container
+    # - name: Kill process using port 6379 (if any)
+    #   shell: |
+    #     kill -9 {{ port_check.stdout }}
+    #   when: port_check.stdout != ""
+    #   ignore_errors: true
+
+    - name: Kill process using port 6379 (if any)
+      shell: |
+        PID=$(lsof -ti :6379)
+        if [ -n "$PID" ]; then
+          kill -9 $PID
+        fi
+      register: kill_output
+      failed_when: false
+      changed_when: kill_output.stdout != ""
+
+    - name: Stop all running containers that use port 6379
+      docker_container:
+        name: "{{ item }}"
+        state: stopped
+      loop: "{{ lookup('docker_container', '', True).splitlines() }}"
+      when: item.ports is defined and '6379/tcp' in item.ports
+      failed_when: false
+      ignore_errors: true
+
+    - name: Wait for port 6379 to be free
+      wait_for:
+        host: 127.0.0.1
+        port: 6379
+        state: stopped
+        timeout: 10
+      when: port_check.stdout != ""
+
+    - name: Run the 'Redis' container
       ansible.builtin.docker_container:
         name: Redis
         image: redis:alpine
@@ -48,21 +142,22 @@
           - "6379"
         published_ports:
           - "6379:6379"
+      when: port_check.stdout == ""
+      failed_when: false
 
-    - name: Verify the Redis container is running
+    - name: Verify the 'Redis' container is running
       ansible.builtin.docker_container_info:
         name: Redis
       register: redis_container_info
 
-
     ##### Worker Service #####
-    - name: Pull the worker Docker image
+    - name: Pull the 'worker' Docker image
       ansible.builtin.docker_image:
         name: ghenac/voting-app-worker
         tag: latest
         source: pull
 
-    - name: Run the worker-app container
+    - name: Run the 'worker' container
       ansible.builtin.docker_container:
         name: voting-app-worker
         image: ghenac/voting-app-worker:latest

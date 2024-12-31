@@ -26,7 +26,7 @@
         dest: /home/ubuntu/voting-app-key.pem
         owner: ubuntu
         group: ubuntu
-        mode: '0600'
+        mode: '0400'
 
     # This ensures that the destination directory is empty/clean (otherwise it will give an error)
     - name: Ensure destination directory is clean
@@ -45,9 +45,9 @@
 
 #####--------------------------------------------------- Play 2: Test SSH connection from "bastion" to "db" and "backend" ---------------------------------------------------#####
 # Test the SSH to "DB"
-# - name: Test SSH connection through bastion to db instance
-#   hosts: frontend
-#   tasks:
+- name: Test SSH connection through bastion to db instance
+  hosts: frontend
+  tasks:
     - name: Ping db from the frontend instance
       shell: ssh -i "voting-app-key.pem" -o ProxyCommand="ssh -i 'voting-app-key.pem' -W %h:%p ubuntu@54.167.3.82" ubuntu@10.0.2.174 echo "Connection successful"
       register: test_ssh
@@ -58,9 +58,9 @@
         var: test_ssh.stdout
 
 # Test the SSH to "backend"
-# - name: Test SSH connection through bastion to backend instance
-#   hosts: frontend
-#   tasks:
+- name: Test SSH connection through bastion to backend instance
+  hosts: frontend
+  tasks:
     - name: Ping backend from the frontend instance
       shell: ssh -i "voting-app-key.pem" -o ProxyCommand="ssh -i 'voting-app-key.pem' -W %h:%p ubuntu@54.167.3.82" ubuntu@10.0.2.150 echo "Connection successful"
       register: test_ssh
@@ -95,13 +95,13 @@
 
 
 
-#####--------------------------------------------------- Play 4: Run "db" and "backend" configuration playbooks ---------------------------------------------------#####
+#####--------------------------------------------------- Play 4: Run "db" and "backend" configuration playbook ---------------------------------------------------#####
 # DB
 # - name: Run db configurations on db EC2
 #   hosts: db # change to DB (delete hosts in db.yml)
 #   become: yes
 #   tasks:
-    - name: Run db configuration
+    - name: Run db playbook
       shell: |
         cd /home/ubuntu/ansible-config &&
         ansible-playbook -i inventory.ini db.yml
@@ -110,12 +110,12 @@
 #   hosts: backend # change to backend (delete hosts in backend.yml)
 #   become: yes
 #   tasks:
-    - name: Run backend configuration
+    - name: Run backend playbook
       shell: |
         cd /home/ubuntu/ansible-config &&
         ansible-playbook -i inventory.ini backend.yml
 
-#####--------------------------------------------------- Play 5: Run "frontend" configuration playbooks ---------------------------------------------------#####
+#####--------------------------------------------------- Play 5: Run "frontend" configuration playbook ---------------------------------------------------#####
 # Run frontend configurations on the frontend instance
 # - name: Run frontend configuration on frontend EC2
 #   hosts: frontend
