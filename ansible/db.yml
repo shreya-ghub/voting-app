@@ -14,42 +14,9 @@
       ansible.builtin.apt:
         update_cache: yes
 
-    - name: Remove conflicting containerd packages (if any)
-      ansible.builtin.apt:
-        name: containerd
-        state: absent
-
-    - name: Install Docker dependencies
-      ansible.builtin.apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - software-properties-common
-        state: present
-
-    - name: Add Docker's GPG key
-      ansible.builtin.get_url:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        dest: /usr/share/keyrings/docker-archive-keyring.gpg
-      notify: Update apt-key
-
-    - name: Add Docker repository
-      ansible.builtin.apt_repository:
-        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
-        state: present
-
-
-    - name: Update apt package index (after adding Docker repository)
-      ansible.builtin.apt:
-        update_cache: yes
-
-    - name: Install Docker CE
-      ansible.builtin.apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
+    - name: Install Docker if not present
+      package:
+        name: docker.io
         state: present
 
     - name: Add the user to the Docker group
@@ -59,15 +26,9 @@
         append: yes
         state: present
 
-    - name: Ensure Docker service is running and enabled
-      ansible.builtin.service:
-        name: docker
-        state: started
-        enabled: true
-
-    - name: Ensure Docker network "voting_app_network" exists
+    - name: Ensure Docker network "voting-app-network" exists
       ansible.builtin.command:
-        cmd: docker network create voting_app_network
+        cmd: docker network create voting-app-network
       register: docker_network_creation
       failed_when: docker_network_creation.stderr != ""
       ignore_errors: true
@@ -99,7 +60,7 @@
         published_ports:
           - "5432:5432"
         networks:
-          - name: voting_app_network
+          - name: voting-app-network
         volumes:
           - name: pgdata
             source: pgdata

@@ -14,11 +14,6 @@
       ansible.builtin.apt:
         update_cache: yes
 
-    # - name: Remove conflicting containerd packages (if any)
-    #   ansible.builtin.apt:
-    #     name: containerd
-    #     state: absent
-
     - name: Check if Docker is installed
       command: docker --version
       register: docker_installed
@@ -74,6 +69,8 @@
         name: voting-app-vote
         image: ghenac/voting-app-vote:latest
         state: started
+        networks:
+          - name: frontend-network
         restart_policy: always
         env:
           REDIS_HOST: "10.0.2.150"  # This is how the worker will connect to Redis container by using the container name as hostname
@@ -100,6 +97,8 @@
         name: voting-app-result
         image: ghenac/voting-app-result:latest
         state: started
+        networks:
+          - name: frontend-network
         restart_policy: always
         exposed_ports:
           - "80"

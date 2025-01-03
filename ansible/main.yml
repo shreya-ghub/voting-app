@@ -1,5 +1,6 @@
 ---
 #####--------------------------------------------------- Play 1: Prepare frontend as a bastion ---------------------------------------------------#####
+
 - name: Prepare frontend as a bastion to deploy backend and db configurations
   hosts: frontend
   become: yes
@@ -44,6 +45,7 @@
         mode: '0755'
 
 #####--------------------------------------------------- Play 2: Test SSH connection from "bastion" to "db" and "backend" ---------------------------------------------------#####
+
 # Test the SSH to "DB"
 - name: Test SSH connection through bastion to db instance
   hosts: frontend
@@ -70,57 +72,23 @@
       debug:
         var: test_ssh.stdout
 
-#####--------------------------------------------------- Play 3: Copy PEM key to "db" and "backend" instances ---------------------------------------------------#####
-# - name: Copy PEM key to db EC2 instance
-#   hosts: frontend
-#   tasks:
-#     - name: Copy PEM key to db instance
-#       ansible.builtin.copy:
-#         src: /home/ubuntu/voting-app-key.pem
-#         dest: /home/ubuntu/.ssh/voting-app-key.pem
-#         mode: '0400'  # Ensure secure permissions
-#         owner: ubuntu
-#         group: ubuntu
+#####--------------------------------------------------- Play 3: Run "db" and "backend" configuration playbook ---------------------------------------------------#####
 
-# - name: Copy PEM key to backend EC2 instance
-#   hosts: frontend
-#   tasks:
-#     - name: Copy PEM key to backend instance
-#       ansible.builtin.copy:
-#         src: /home/ubuntu/voting-app-key.pem
-#         dest: /home/ubuntu/.ssh/voting-app-key.pem
-#         mode: '0400'  # Ensure secure permissions
-#         owner: ubuntu
-#         group: ubuntu
-
-
-
-#####--------------------------------------------------- Play 4: Run "db" and "backend" configuration playbook ---------------------------------------------------#####
-# DB
-# - name: Run db configurations on db EC2
-#   hosts: db # change to DB (delete hosts in db.yml)
-#   become: yes
-#   tasks:
+# Run db configurations on db instance
     - name: Run db playbook
       shell: |
         cd /home/ubuntu/ansible-config &&
         ansible-playbook -i inventory.ini db.yml
-# backend
-# - name: Run backend configuration on backend EC2
-#   hosts: backend # change to backend (delete hosts in backend.yml)
-#   become: yes
-#   tasks:
+
+# Run backend configuration on backend instance
     - name: Run backend playbook
       shell: |
         cd /home/ubuntu/ansible-config &&
         ansible-playbook -i inventory.ini backend.yml
 
-#####--------------------------------------------------- Play 5: Run "frontend" configuration playbook ---------------------------------------------------#####
+#####--------------------------------------------------- Play 4: Run "frontend" configuration playbook ---------------------------------------------------#####
+
 # Run frontend configurations on the frontend instance
-# - name: Run frontend configuration on frontend EC2
-#   hosts: frontend
-#   become: yes
-#   tasks:
     - name: Run frontend playbook
       shell: |
         cd /home/ubuntu/ansible-config &&
