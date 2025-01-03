@@ -1,0 +1,96 @@
+---
+#####--------------------------------------------------- Play 1: Prepare frontend as a bastion ---------------------------------------------------#####
+
+- name: Prepare frontend as a bastion to deploy backend and db configurations
+  hosts: frontend
+  become: yes
+  tasks:
+    - name: Add Ansible PPA repository
+      apt_repository:
+        repo: "ppa:ansible/ansible"
+        state: present
+
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+
+    # Install Ansible on the frontend instance
+    - name: Install Ansible
+      apt:
+        name: ansible
+        state: present
+
+    # Transfer private key for SSH access
+    - name: Copy private key to the frontend instance
+      copy:
+        src: ../voting-app-key.pem  # Path to the key pair from your local machine
+        dest: /home/ubuntu/voting-app-key.pem
+        owner: ubuntu
+        group: ubuntu
+        mode: '0400'
+
+    # This ensures that the destination directory is empty/clean (otherwise it will give an error)
+    - name: Ensure destination directory is clean
+      file:
+        path: /home/ubuntu/ansible-config
+        state: absent
+
+    # Copy Ansible playbooks and configurations
+    - name: Transfer Ansible playbooks to frontend instance
+      copy:
+        src: /Users/ghenadie/Desktop/voting_app_solution/example-voting-app/ansible/ # Path to the Ansible configurations on your local machine (yes, you need the full path here)
+        dest: /home/ubuntu/ansible-config/
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+#####--------------------------------------------------- Play 2: Test SSH connection from "bastion" to "db" and "backend" ---------------------------------------------------#####
+
+# Test the SSH to "DB"
+- name: Test SSH connection through bastion to db instance
+  hosts: frontend
+  tasks:
+    - name: Ping db from the frontend instance
+      shell: ssh -i "voting-app-key.pem" -o ProxyCommand="ssh -i 'voting-app-key.pem' -W %h:%p ubuntu@54.167.3.82" ubuntu@10.0.2.174 echo "Connection successful"
+      register: test_ssh
+      changed_when: false
+
+    - name: Output SSH test results
+      debug:
+        var: test_ssh.stdout
+
+# Test the SSH to "backend"
+- name: Test SSH connection through bastion to backend instance
+  hosts: frontend
+  tasks:
+    - name: Ping backend from the frontend instance
+      shell: ssh -i "voting-app-key.pem" -o ProxyCommand="ssh -i 'voting-app-key.pem' -W %h:%p ubuntu@54.167.3.82" ubuntu@10.0.2.150 echo "Connection successful"
+      register: test_ssh
+      changed_when: false
+
+    - name: Output SSH test results
+      debug:
+        var: test_ssh.stdout
+
+#####--------------------------------------------------- Play 3: Run "db" and "backend" configuration playbook ---------------------------------------------------#####
+
+# Run db configurations on db instance
+    - name: Run db playbook
+      shell: |
+        cd /home/ubuntu/ansible-config &&
+        ansible-playbook -i inventory.ini db.yml
+
+# Run backend configuration on backend instance
+    - name: Run backend playbook
+      shell: |
+        cd /home/ubuntu/ansible-config &&
+        ansible-playbook -i inventory.ini backend.yml
+
+#####--------------------------------------------------- Play 4: Run "frontend" configuration playbook ---------------------------------------------------#####
+
+# Run frontend configurations on the frontend instance
+    - name: Run frontend playbook
+      shell: |
+        cd /home/ubuntu/ansible-config &&
+        ansible-playbook -i inventory.ini frontend.yml
+    

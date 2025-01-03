@@ -4,3 +4,9 @@ bin/
 obj/
 .vs/
 node_modules/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+dump.rdb
+voting-app-key.pem
